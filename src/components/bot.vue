@@ -73,46 +73,28 @@ export default {
       this.stream.on("item", comment => {
         // Look for any comment containing '@auto'
         if (this.masterkey.test(comment.body)) {
-          // @@ Something is wrong. Fetch doesn't work once nested in a firebase promise
-
-          // let check = db.collection("replies").where("id", "==", comment.name);
-          // check.get().then(snapshot => {
-          //   // If comment does not exist, proceed to generate one
-          //   if (!snapshot.docs.length) {
-          //     console.log(`Doesn't exist!`);
-          //     console.log(comment);
-          //     console.log(comment.link_id);
-          // Query the comment's parent thread information
           return r
             .getSubmission(comment.link_id)
             .fetch()
             .then(post => {
               console.log(post);
               // Construct a reply containing comment info and thread creator's name
-
               self
                 .constructReply(comment, post)
                 .then(thisreply => {
+                  console.log("REPLY TO USER");
+                  console.log(thisreply);
                   comment.reply(thisreply);
                 })
                 .catch(rej => {
-                  console.log(rej);
+                  console.error(rej);
                 });
             });
-          // } else {
-          //   // Else do nothing
-          //   console.log("ALREADY EXISTS");
-          //   console.log(snapshot.docs[0].data());
-          //   return null;
-          // }
-          // });
         }
       });
     },
     constructReply(comment, post) {
       return new Promise((resolve, reject) => {
-        console.log(`${comment.author.name} > ${post.author.name}`);
-
         let responses = this.commands.filter(autoreply => {
           return autoreply.key.test(comment.body);
         });
@@ -120,7 +102,7 @@ export default {
         let fullreply,
           cmds = [];
         if (responses.length) {
-          let greeting = `Hello u/${post.author.name}, please see the following:
+          let greeting = `Hello u/${post.author.name}:
                   \r\n`;
           fullreply = greeting;
           responses.forEach(response => {
@@ -139,35 +121,35 @@ export default {
         }
         fullreply += this.defaultfooter;
 
-        console.log(fullreply);
+        // THIS DOES NOT WORK
+        // Wrapping the bot to reply after checking database does not work.
+        // Yet without checking database, I risk multiple replies every time I run my dev server.
 
-        let check = db.collection("replies").where("id", "==", comment.name);
-        check.get().then(snapshot => {
-          // If comment does not exist, proceed to generate one
-          if (!snapshot.docs.length) {
-            console.log(`Doesn't exist!`);
-            console.log(comment);
-            console.log(comment.link_id);
-            db.collection("replies").add({
-              id: comment.name,
-              commenter: comment.author.name,
-              poster: post.author.name,
-              selftext: post.selftext,
-              body: comment.body,
-              cmds: cmds,
-              timestamp: Date.now(),
-              commentTime: comment.created_utc,
-              subreddit: comment.subreddit_name_prefixed,
-              url: post.url
-            });
-            resolve(fullreply);
-            // console.log("REPLYING TO USER");
-            // return
-          } else {
-            reject("ALREADY EXISTS");
-            // console.log("");
-          }
+        // let check = db.collection("replies").where("id", "==", comment.name);
+        // check.get().then(snapshot => {
+        // If comment does not exist, proceed to generate one
+        // if (!snapshot.docs.length) {
+
+        // I'd like to have a GUI table of the bot's history,
+        // and allow oAuth'd users to add their own commands dynamically
+        db.collection("replies").add({
+          id: comment.name,
+          commenter: comment.author.name,
+          poster: post.author.name,
+          selftext: post.selftext,
+          body: comment.body,
+          cmds: cmds,
+          timestamp: Date.now(),
+          commentTime: comment.created_utc,
+          subreddit: comment.subreddit_name_prefixed,
+          url: post.url
         });
+
+        resolve(fullreply);
+        // } else {
+        //   reject("ALREADY EXISTS");
+        // }
+        // });
       });
     }
   }

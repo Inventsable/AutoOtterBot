@@ -60,7 +60,7 @@ export default {
   methods: {
     startCrawling() {
       const self = this;
-      r.config({ requestDelay: 10000, warnings: true });
+      r.config({ requestDelay: 3000, warnings: true });
 
       this.stream = new CommentStream(r, {
         subreddit: self.subreddit,
@@ -89,7 +89,15 @@ export default {
             .then(post => {
               console.log(post);
               // Construct a reply containing comment info and thread creator's name
-              self.constructReply(comment, post);
+
+              self
+                .constructReply(comment, post)
+                .then(thisreply => {
+                  comment.reply(thisreply);
+                })
+                .catch(rej => {
+                  console.log(rej);
+                });
             });
           // } else {
           //   // Else do nothing
@@ -102,59 +110,64 @@ export default {
       });
     },
     constructReply(comment, post) {
-      console.log(`${comment.author.name} > ${post.author.name}`);
+      return new Promise((resolve, reject) => {
+        console.log(`${comment.author.name} > ${post.author.name}`);
 
-      let responses = this.commands.filter(autoreply => {
-        return autoreply.key.test(comment.body);
-      });
-
-      let fullreply,
-        cmds = [];
-      if (responses.length) {
-        let greeting = `Hello u/${post.author.name}, please see the following:
-                \r\n`;
-        fullreply = greeting;
-        responses.forEach(response => {
-          fullreply += `\r` + response.content;
-          cmds.push(response.name);
+        let responses = this.commands.filter(autoreply => {
+          return autoreply.key.test(comment.body);
         });
-      } else if (/help/i.test(comment.body)) {
-        let greeting = `Hello u/${
-          comment.author.name
-        }, here are a list of my commands:\r\n`;
-        fullreply = greeting;
-        this.commands.forEach(cmd => {
-          fullreply += `\r\n\`@auto ${cmd.name}\` -- ${cmd.desc}\r\n`;
-        });
-        cmds = ["help"];
-      }
-      fullreply += this.defaultfooter;
 
-      console.log(fullreply);
-
-      let check = db.collection("replies").where("id", "==", comment.name);
-      check.get().then(snapshot => {
-        // If comment does not exist, proceed to generate one
-        if (!snapshot.docs.length) {
-          console.log(`Doesn't exist!`);
-          console.log(comment);
-          console.log(comment.link_id);
-          db.collection("replies").add({
-            id: comment.name,
-            commenter: comment.author.name,
-            poster: post.author.name,
-            selftext: post.selftext,
-            body: comment.body,
-            cmds: cmds,
-            timestamp: Date.now(),
-            commentTime: comment.created_utc,
-            subreddit: comment.subreddit_name_prefixed,
-            url: post.url
+        let fullreply,
+          cmds = [];
+        if (responses.length) {
+          let greeting = `Hello u/${post.author.name}, please see the following:
+                  \r\n`;
+          fullreply = greeting;
+          responses.forEach(response => {
+            fullreply += `\r` + response.content;
+            cmds.push(response.name);
           });
-          return comment.reply(fullreply);
-        } else {
-          console.log("ALREADY EXISTS");
+        } else if (/help/i.test(comment.body)) {
+          let greeting = `Hello u/${
+            comment.author.name
+          }, here are a list of my commands:\r\n`;
+          fullreply = greeting;
+          this.commands.forEach(cmd => {
+            fullreply += `\r\n\`@auto ${cmd.name}\` -- ${cmd.desc}\r\n`;
+          });
+          cmds = ["help"];
         }
+        fullreply += this.defaultfooter;
+
+        console.log(fullreply);
+
+        let check = db.collection("replies").where("id", "==", comment.name);
+        check.get().then(snapshot => {
+          // If comment does not exist, proceed to generate one
+          if (!snapshot.docs.length) {
+            console.log(`Doesn't exist!`);
+            console.log(comment);
+            console.log(comment.link_id);
+            db.collection("replies").add({
+              id: comment.name,
+              commenter: comment.author.name,
+              poster: post.author.name,
+              selftext: post.selftext,
+              body: comment.body,
+              cmds: cmds,
+              timestamp: Date.now(),
+              commentTime: comment.created_utc,
+              subreddit: comment.subreddit_name_prefixed,
+              url: post.url
+            });
+            resolve(fullreply);
+            // console.log("REPLYING TO USER");
+            // return
+          } else {
+            reject("ALREADY EXISTS");
+            // console.log("");
+          }
+        });
       });
     }
   }

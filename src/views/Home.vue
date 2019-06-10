@@ -1,13 +1,15 @@
 <template>
-  <HelloWorld />
+  <v-container>
+    <reply-list/>
+  </v-container>
 </template>
 
 <script>
-  import HelloWorld from '../components/HelloWorld'
+import replylist from "../components/replylist";
 
-  export default {
-    components: {
-      HelloWorld
-    }
+export default {
+  components: {
+    "reply-list": replylist
   }
+};
 </script>

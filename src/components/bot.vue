@@ -72,6 +72,7 @@ export default {
       // Scan a comment stream
       this.stream.on("item", comment => {
         // Look for any comment containing '@auto'
+        if (comment.author.name == "AutomatedOtter") return;
         if (this.masterkey.test(comment.body)) {
           return r
             .getSubmission(comment.link_id)

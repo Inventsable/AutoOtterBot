@@ -54,8 +54,8 @@ export default {
     ]
   }),
   mounted() {
-    this.startCrawling();
-    this.startBot();
+    // this.startCrawling();
+    // this.startBot();
   },
   methods: {
     startCrawling() {
